@@ -31,3 +31,4 @@
 *.swp
 CMakeFiles/
 build/
+tests/*/output.txt
