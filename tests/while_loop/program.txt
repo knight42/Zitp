@@ -1,0 +1,11 @@
+Begin
+	Var x End
+	Read x
+
+    While Gt x 5
+    Begin
+        Read x
+    End
+
+    Print x
+End

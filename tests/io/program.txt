@@ -1,0 +1,5 @@
+Begin
+	Var x End
+	Read x
+	Print x
+End
