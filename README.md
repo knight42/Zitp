@@ -38,3 +38,19 @@ BoolExpr -> Lt Expr Expr
           | Or BoolExpr BoolExpr
           | Negb BoolExpr
 ```
+
+# Build
+
+NOTE: Only tested on ArchLinux.
+
+```
+$ mkdir build && cd build
+$ cmake -DCMAKE_BUILD_TYPE=Debug ..
+$ make
+```
+
+# Test
+
+```
+$ make test
+```
