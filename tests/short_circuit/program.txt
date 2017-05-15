@@ -1,0 +1,40 @@
+Begin
+    Var x y End
+
+    Function heavy Paras i
+    Begin
+        Var x End
+        Assign x i
+        While Lt x 1024
+        Begin
+            Assign x Plus x 1
+        End
+        Print i
+        Return 1
+    End
+
+    If And
+        Eq 2 2
+        Eq Apply heavy Argus 1 End 3
+    Begin End
+    Else Begin End
+
+    If And
+        Eq 3 2
+        Eq Apply heavy Argus 2 End 3
+    Begin End
+    Else Begin End
+
+    If Or
+        Eq 3 2
+        Eq Apply heavy Argus 3 End 3
+    Begin End
+    Else Begin End
+
+    If Or
+        Eq 2 2
+        Eq Apply heavy Argus 4 End 3
+    Begin End
+    Else Begin End
+
+End

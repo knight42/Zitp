@@ -10,6 +10,11 @@ trap 'rm -f $temp' EXIT
 
 "$prog" -i "$p/input.txt" -p "$p/program.txt" -o "$temp" >/dev/null
 
+if [[ $? -ne 0 ]]; then
+    echo >&2 "Failed: $name"
+    exit 1
+fi
+
 if ! diff -q "$p/output.expected" "$temp" >/dev/null
 then
     echo >&2 "Failed: $name"

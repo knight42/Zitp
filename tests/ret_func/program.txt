@@ -1,0 +1,21 @@
+Begin
+    Var x y End
+
+    Function f Paras
+    Begin
+
+        Function inner Paras a
+        Begin
+            Return Plus 3 a
+        End
+
+        Return inner
+    End
+
+    Assign x Apply f Argus End
+    Print Apply x Argus 6 End
+    Assign y x
+    Print Apply y Argus 6 End
+    Assign x 0
+    Assign y 0
+End
