@@ -32,8 +32,8 @@ class Term{
         std::string name;
 
         Term(){}
-        Term(TermKind kind){this->kind=kind;}
+        Term(TermKind k){this->kind=k;}
         void print();
 };
-Term* parse(std::istream& input,std::string pretext,Term* father,bool NameorExpr);
+extern Term* parse(std::istream& input,std::string pretext="",Term* father=nullptr,bool NameorExpr=false);
 #endif
