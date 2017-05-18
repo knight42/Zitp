@@ -49,7 +49,7 @@ public:
             return false;
         }
         ast = parse(ifs);
-        return true;
+        return ast != nullptr;
     }
 
     void run();

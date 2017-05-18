@@ -42,11 +42,9 @@ class BoolValue : public Value {
 };
 
 class Scope {
-    typedef std::unordered_map<std::string, std::shared_ptr<Value>> var_t;
-
     private:
         u32 ref;
-        std::unique_ptr<var_t> map;
+        std::unordered_map<std::string, std::shared_ptr<Value>> map;
         void destroy() {
             #if DEBUG_MODE
             std::cout << "Destroying scope " << id << std::endl;
