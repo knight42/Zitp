@@ -26,7 +26,11 @@ void Scope::link() {
 }
 
 void Scope::decl_var(const string& name) {
-    map[name] = std::make_shared<IntValue>(0);
+    static shared_ptr<Value> dummy = std::make_shared<Value>();
+    auto search = map.find(name);
+    if (search == map.end()) {
+        map[name] = dummy;
+    }
 }
 
 shared_ptr<Value> Scope::get_var(const string &key) const {
@@ -61,6 +65,9 @@ void Scope::set_var(const string& key, shared_ptr<Value> v) {
 
 void Scope::unlink() {
     if (ref == 0) {
+        #if DEBUG_MODE
+        cerr << "Scope " << id << ": ";
+        #endif
         cerr << "Why ref == 0?" << endl;
         return;
     }

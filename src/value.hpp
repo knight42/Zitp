@@ -12,6 +12,7 @@ typedef int32_t i32;
 typedef uint32_t u32;
 
 enum ValueKind {
+    Null,
     Boolean,
     Integer,
     Func
@@ -19,8 +20,9 @@ enum ValueKind {
 
 class Value {
     public:
-        virtual ~Value() {}
-        ValueKind kind;
+    Value(): kind(Null) {}
+    virtual ~Value() {}
+    ValueKind kind;
 };
 
 class IntValue : public Value {
