@@ -1,0 +1,7 @@
+Begin
+	Print Plus 3 10
+	Print Minus 3 10
+	Print Mult 3 10
+	Print Div 3 10
+	Print Mod 3 10
+End

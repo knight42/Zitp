@@ -1,0 +1,16 @@
+Begin
+    Var x End
+
+    Function fun Paras
+    Begin
+    End
+
+    Print x
+    Assign x fun
+    Print x
+    Assign x 10
+    Print x
+
+    Var x End
+    Print x
+End
