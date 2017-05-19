@@ -70,6 +70,7 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
                 return make_int(t->number);
             case VarName:
                 var = current->get_var(t->name);
+                if (!var) return var;
                 if (var->kind == Integer) {
                     //cout << "Var " << t->name << ": " << to_int(var.get()) << endl;
                     return std::static_pointer_cast<IntValue>(var);
@@ -80,8 +81,8 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
                 else if (var->kind == Func) {
                     return std::static_pointer_cast<FuncValue>(var);
                 }
-                cerr << "Invalid kind of var: " << t->sons.front()->name <<endl;
-                return nullptr;
+                cerr << "Invalid kind of var: " << t->name <<endl;
+                return var;
             case Plus:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
@@ -230,7 +231,10 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                 root->set_var(cmd->sons.front()->name, make_int(read_int()));
             }
             else if (cmd->subtype == Print) {
-                print_int(to_int(eval_expr(cmd->sons.front(), root).get()));
+                auto res = eval_expr(cmd->sons.front(), root);
+                if (res->kind == Integer) {
+                    print_int(to_int(res.get()));
+                }
             }
         }
     }
