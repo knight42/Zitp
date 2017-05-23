@@ -11,19 +11,17 @@ using std::ofstream;
 typedef int32_t i32;
 typedef uint32_t u32;
 
+static shared_ptr<BoolValue> _bools[2] = {
+    std::make_shared<BoolValue>(false),
+    std::make_shared<BoolValue>(true),
+};
+
 #define to_int(v)  (static_cast<const IntValue*>(v)->value())
 #define to_bool(v) (static_cast<const BoolValue*>(v)->value())
 #define to_func(v) (static_cast<const FuncValue*>(v)->value())
 
 #define make_int(v)  (std::make_shared<IntValue>(v))
-
-shared_ptr<BoolValue> make_bool(bool v) {
-    static shared_ptr<BoolValue> arr[2] = {
-        std::make_shared<BoolValue>(false),
-        std::make_shared<BoolValue>(true),
-    };
-    return v ? arr[1] : arr[0];
-}
+#define make_bool(v)  ((v) ? _bools[1] : _bools[0])
 
 shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
 
@@ -81,7 +79,7 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
                 else if (var->kind == Func) {
                     return std::static_pointer_cast<FuncValue>(var);
                 }
-                cerr << "Invalid kind of var: " << t->name <<endl;
+                cerr << "ERROR: Invalid kind of var: " << t->name <<endl;
                 return var;
             case Plus:
                 l = eval_expr(first, current);
@@ -98,15 +96,23 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
             case Div:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
+                if (to_int(r.get()) == 0) {
+                    cerr << "ERROR: integer division or modulo by zero" << endl;
+                    std::exit(1);
+                }
                 return make_int(to_int(l.get()) / to_int(r.get()));
             case Mod:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
+                if (to_int(r.get()) == 0) {
+                    cerr << "ERROR: integer division or modulo by zero" << endl;
+                    std::exit(1);
+                }
                 return make_int(to_int(l.get()) % to_int(r.get()));
             case Apply: {
                 var = current->get_var(first->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
-                Scope *s = new Scope(fv->outer);
+                Scope *s = new Scope(fv->outer, fv->visible);
                 #if DEBUG_MODE
                 cout << "Apply <" << first->name << "> scope: " << s->id <<endl;
                 #endif
@@ -117,18 +123,18 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
             }
         }
     }
-    cerr << "Invalid expr: " << t->kind << endl;
-    return nullptr;
+    cerr << "ERROR: Invalid expr: " << t->kind << endl;
+    std::exit(1);
 }
 
 void Zitp::init_params(const FuncValue *fv, Term *argus, Scope *born, Scope *current) {
     Term *params = fv->value();
     // Function has a Block
     if (params->sons.size() - 1 != argus->sons.size()) {
-        cerr << "Different size:" << endl;
+        cerr << "ERROR: Different size:" << endl;
         cerr << "vars size: " << params->sons.size() - 1 << endl;
         cerr << "exprs size: " << argus->sons.size() << endl;
-        return;
+        std::exit(1);
     }
     auto vit = ++params->sons.begin();
     auto eit = ++argus->sons.begin();
@@ -143,44 +149,42 @@ void Zitp::init_params(const FuncValue *fv, Term *argus, Scope *born, Scope *cur
 
 shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
     if (t->kind != Block) {
-        cerr << "Not a Block" << endl;
-        return nullptr;
+        cerr << "ERROR: Not a Block" << endl;
+        std::exit(1);
     }
 
-    for (auto &i : t->sons) {
-        if (i->kind == Function) {
-            root->decl_var(i->sons.front()->name);
-            root->set_var(i->sons.front()->name,
-                    std::make_shared<FuncValue>(root, i));
+    for (auto &cmd : t->sons) {
+        if (cmd->kind == Function) {
+            root->decl_var(cmd->sons.front()->name);
+            root->set_var(cmd->sons.front()->name,
+                    std::make_shared<FuncValue>(root, cmd));
         }
-        else if (i->kind == Command) {
-            auto cmd = i;
-
+        else if (cmd->kind == Command) {
             if (cmd->subtype == Declaration) {
                 for (auto &var : cmd->sons) {
                     root->decl_var(var->name);
                 }
             }
             else if (cmd->subtype == While) {
-                auto expr = eval_expr(i->sons.front(), root);
+                auto expr = eval_expr(cmd->sons.front(), root);
                 while (to_bool(expr.get())) {
-                    Scope *born = new Scope(root);
+                    Scope *born = new Scope(root, root->count_vars());
                     #if DEBUG_MODE
                     cout << "While block scope: " << born->id <<endl;
                     #endif
-                    auto res = execute_program(i->sons.back(), born);
+                    auto res = execute_program(cmd->sons.back(), born);
                     if (res) {
                         root->unlink();
                         return res;
                     }
 
-                    expr = eval_expr(i->sons.front(), root);
+                    expr = eval_expr(cmd->sons.front(), root);
                 }
             }
             else if (cmd->subtype == If) {
-                auto it = i->sons.begin();
+                auto it = cmd->sons.begin();
                 auto expr = eval_expr(*it, root);
-                Scope *born = new Scope(root);
+                Scope *born = new Scope(root, root->count_vars());
                 #if DEBUG_MODE
                 cout << "If block scope: " << born->id <<endl;
                 #endif
@@ -207,7 +211,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                     // unreachable
                     default:
                         root->unlink();
-                        cerr << "Return unexpected value" << endl;
+                        cerr << "ERROR: Return unexpected value" << endl;
                         return nullptr;
                 }
             }
@@ -219,9 +223,9 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
             else if (cmd->subtype == Call) {
                 auto var = root->get_var(cmd->sons.front()->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
-                Scope *s = new Scope(fv->outer);
+                Scope *s = new Scope(fv->outer, fv->visible);
                 #if DEBUG_MODE
-                cout << "Call scope: " << s->id <<endl;
+                cout << "Call <" << cmd->sons.front()->name << "> scope: " << s->id <<endl;
                 #endif
                 init_params(fv, cmd, s, root);
                 Term *func = fv->value();
@@ -250,8 +254,8 @@ i32 Zitp::read_int() {
     if (!_input.is_open()) {
         _input = ifstream(input_file);
         if (!_input) {
-            cerr << "Failed to open " << input_file << endl;
-            return -1;
+            cerr << "ERROR: Failed to open " << input_file << endl;
+            std::exit(1);
         }
     }
     i32 n = 0;
@@ -260,26 +264,33 @@ i32 Zitp::read_int() {
 }
 
 void Zitp::print_int(i32 val) {
+    static bool first = true;
     if (!_output.is_open()) {
         _output = ofstream(output_file);
         if (!_output) {
-            cerr << "Failed to open " << output_file << endl;
-            return;
+            cerr << "ERROR: Failed to open " << output_file << endl;
+            std::exit(1);
         }
     }
-    _output << val << endl;
+    if (!first) {
+        _output << ' ' << val;
+    } else {
+        _output << val;
+        first = false;
+    }
 }
 
 
 void Zitp::run() {
     if (ast == nullptr) {
-        cerr << "No AST" << endl;
-        return;
+        cerr << "ERROR: No AST" << endl;
+        std::exit(1);
     }
-    Scope *top = new Scope(nullptr);
+    Scope *top = new Scope(nullptr, 0);
     #if DEBUG_MODE
     cout << "Global scope: " << top->id << endl;
     #endif
     auto res = execute_program(ast, top);
+    _output << endl;
     return;
 }

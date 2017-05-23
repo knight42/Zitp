@@ -4,12 +4,22 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <utility>
+#include <cstdlib>
+#include <vector>
+#include <functional>
 #include <unordered_map>
 
 #include "Term.hpp"
 
+#ifndef DEBUG_MODE
+#define DEBUG_MODE 0
+#endif
+
 typedef int32_t i32;
 typedef uint32_t u32;
+typedef uintptr_t usize;
 
 enum ValueKind {
     Null,
@@ -44,9 +54,10 @@ class BoolValue : public Value {
 };
 
 class Scope {
+    typedef std::pair<std::string, std::shared_ptr<Value>> var_t;
     private:
         u32 ref;
-        std::unordered_map<std::string, std::shared_ptr<Value>> map;
+        std::vector<var_t> map;
         void destroy() {
             #if DEBUG_MODE
             std::cout << "Destroying scope " << id << std::endl;
@@ -56,23 +67,26 @@ class Scope {
 
     public:
         Scope* outer;
+        usize visible;
         #if DEBUG_MODE
         u32 id;
         #endif
-        Scope(Scope *s);
+        Scope(Scope *s, usize seen);
 
         void unlink();
         void link();
-        void set_var(const std::string& key, std::shared_ptr<Value> v);
         void decl_var(const std::string& name);
+        void set_var(const std::string& key, std::shared_ptr<Value> v);
         std::shared_ptr<Value> get_var(const std::string &key) const;
+        usize count_vars() const { return map.size(); }
 };
 
 class FuncValue : public Value {
     Term* val;
     public:
     Scope* outer;
-    FuncValue(Scope *s, Term* v = nullptr): val(v), outer(s) {
+    usize visible;
+    FuncValue(Scope *s, Term* v = nullptr): val(v), outer(s), visible(s->count_vars()) {
         kind = Func;
     }
     Term* value() const { return val; }

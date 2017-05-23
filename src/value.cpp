@@ -6,10 +6,14 @@ using std::endl;
 using std::string;
 using std::shared_ptr;
 
+#ifndef DEBUG_MODE
+#define DEBUG_MODE 0
+#endif
+
 #if DEBUG_MODE
 static u32 sid = 0;
 #endif
-Scope::Scope(Scope *s) : ref(1), outer(s) {
+Scope::Scope(Scope *s, usize seen) : ref(1), outer(s), visible(seen) {
     #if DEBUG_MODE
     id = sid++;
     #endif
@@ -26,41 +30,59 @@ void Scope::link() {
 }
 
 void Scope::decl_var(const string& name) {
-    static shared_ptr<Value> dummy = std::make_shared<Value>();
-    auto search = map.find(name);
-    if (search == map.end()) {
-        map[name] = dummy;
+    static auto dummy = std::make_shared<Value>();
+    for (auto &search : map) {
+        if (search.first == name) return;
     }
+    map.push_back(std::make_pair(name, dummy));
 }
 
 shared_ptr<Value> Scope::get_var(const string &key) const {
-    const Scope *current = this;
-    while (current) {
-        auto search = current->map.find(key);
-        if (search != current->map.end()) {
-            return search->second;
+    const Scope *out = this;
+    usize before = this->map.size();
+    while (out) {
+        auto it = out->map.begin();
+        auto cnt = std::min(before, out->map.size());
+        while (cnt != 0) {
+            if (it->first == key) {
+                return it->second;
+            }
+            ++it; --cnt;
         }
-        current = current->outer;
+        before = out->visible;
+        out = out->outer;
     }
-    cerr << "Cannot find var: " << key << endl;
-    return nullptr;
+    cerr << "ERROR: Cannot find var: " << key << endl;
+    std::exit(1);
 }
 
+// TODO: Almost the same as Scope::get_var
+// How can we reuse the code?
 void Scope::set_var(const string& key, shared_ptr<Value> v) {
-    Scope *current = this;
-    while (current) {
-        auto search = current->map.find(key);
-        if (search != current->map.end()) {
-            if (search->second->kind == Func && search->second.use_count() == 2) {
-                auto captured = std::static_pointer_cast<FuncValue>(search->second)->outer;
-                if (captured != this) captured->unlink();
+    Scope *out = this;
+    usize before = this->map.size();
+    while (out) {
+        auto it = out->map.begin();
+        auto cnt = std::min(before, out->map.size());
+        while (cnt != 0) {
+            if (it->first == key) {
+                // Reclaim unused scope
+                if (it->second->kind == Func &&
+                    it->second.use_count() == 2)
+                {
+                    auto captured = std::static_pointer_cast<FuncValue>(it->second)->outer;
+                    if (captured != this) captured->unlink();
+                }
+                it->second = v;
+                return;
             }
-            (current->map)[key] = v;
-            return;
+            ++it; --cnt;
         }
-        current = current->outer;
+        before = out->visible;
+        out = out->outer;
     }
-    cerr << "Cannot assign var: " << key << endl;
+    cerr << "ERROR: Cannot assign var: " << key << endl;
+    std::exit(1);
 }
 
 void Scope::unlink() {
