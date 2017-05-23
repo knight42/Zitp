@@ -23,6 +23,6 @@ endfunction()
 
 addTest(io arith print
     app_func1 app_func2 app_func3
-    ret_func currying high_order high_order2 iter_fact
+    nested ret_func currying high_order high_order2 iter_fact
     short_circuit
     while_loop)

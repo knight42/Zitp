@@ -1,0 +1,44 @@
+Begin
+    Var x End
+    Function f Paras Begin
+        Function g Paras Begin
+            Print x
+        End
+        Call g Argus End
+        Assign x 1
+        Call g Argus End
+
+        If Eq x 1
+        Begin
+            Print 2
+        End
+        Else Begin End
+
+        While Eq x 1
+        Begin
+            Assign x 3
+        End
+
+        Var x End
+        Assign x 4
+        Call g Argus End
+    End
+    Assign x 0
+    Call f Argus End
+
+    Function h Paras x Begin
+        Function hh Paras Begin
+            Function hhh Paras Begin
+                Print x
+            End
+            Call hhh Argus End
+            Assign x 6
+            Call hhh Argus End
+            Var x End
+            Assign x 7
+            Call hhh Argus End
+        End
+        Call hh Argus End
+    End
+    Call h Argus 5 End
+End
