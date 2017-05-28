@@ -67,18 +67,10 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
             case Number:
                 return make_int(t->number);
             case VarName:
-                var = current->get_var(t->name);
+                var = current->get_val(t->name);
                 if (!var) return var;
-                if (var->kind == Integer) {
-                    //cout << "Var " << t->name << ": " << to_int(var.get()) << endl;
-                    return std::static_pointer_cast<IntValue>(var);
-                }
-                else if (var->kind == Boolean) {
-                    return std::static_pointer_cast<BoolValue>(var);
-                }
-                else if (var->kind == Func) {
-                    return std::static_pointer_cast<FuncValue>(var);
-                }
+                //cout << "Var " << t->name << ": " << to_int(var.get()) << endl;
+                if (var->kind != Null) return var;
                 cerr << "ERROR: Invalid kind of var: " << t->name <<endl;
                 return var;
             case Plus:
@@ -110,7 +102,7 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
                 }
                 return make_int(to_int(l) % to_int(r));
             case Apply: {
-                var = current->get_var(first->name);
+                var = current->get_val(first->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
                 Scope *s = new Scope(fv->outer, fv->visible);
                 #if DEBUG_MODE
@@ -221,7 +213,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                 root->set_var(name, eval_expr(*++it, root));
             }
             else if (cmd->subtype == Call) {
-                auto var = root->get_var(cmd->sons.front()->name);
+                auto var = root->get_val(cmd->sons.front()->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
                 Scope *s = new Scope(fv->outer, fv->visible);
                 #if DEBUG_MODE

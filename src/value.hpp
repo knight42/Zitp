@@ -53,11 +53,12 @@ class BoolValue : public Value {
     bool value() const { return val; }
 };
 
+typedef std::pair<std::string, std::shared_ptr<Value>> var_t;
 class Scope {
-    typedef std::pair<std::string, std::shared_ptr<Value>> var_t;
     private:
         u32 ref;
-        std::vector<var_t> map;
+
+        std::vector<var_t>::iterator find_var(Scope *root, const std::string& key) const;
         void destroy() {
             #if DEBUG_MODE
             std::cout << "Destroying scope " << id << std::endl;
@@ -71,13 +72,14 @@ class Scope {
         #if DEBUG_MODE
         u32 id;
         #endif
+        std::vector<var_t> map;
         Scope(Scope *s, usize seen);
 
         void unlink();
         void link();
         void decl_var(const std::string& name);
         void set_var(const std::string& key, std::shared_ptr<Value> v);
-        std::shared_ptr<Value> get_var(const std::string &key) const;
+        std::shared_ptr<Value> get_val(const std::string &key);
         usize count_vars() const { return map.size(); }
 };
 

@@ -37,52 +37,39 @@ void Scope::decl_var(const string& name) {
     map.push_back(std::make_pair(name, dummy));
 }
 
-shared_ptr<Value> Scope::get_var(const string &key) const {
-    const Scope *out = this;
-    usize before = this->map.size();
-    while (out) {
-        auto it = out->map.begin();
-        auto cnt = std::min(before, out->map.size());
+std::vector<var_t>::iterator Scope::find_var(Scope *root, const std::string& key) const {
+    usize before = root->map.size();
+    while (root) {
+        auto it = root->map.begin();
+        auto cnt = std::min(before, root->map.size());
         while (cnt != 0) {
             if (it->first == key) {
-                return it->second;
+                return it;
             }
             ++it; --cnt;
         }
-        before = out->visible;
-        out = out->outer;
+        before = root->visible;
+        root = root->outer;
     }
-    cerr << "ERROR: Cannot find var: " << key << endl;
+    cerr << "ERROR: Cannot find " << key << endl;
     std::exit(1);
 }
 
-// TODO: Almost the same as Scope::get_var
-// How can we reuse the code?
+shared_ptr<Value> Scope::get_val(const string &key) {
+    auto it = find_var(this, key);
+    return it->second;
+}
+
 void Scope::set_var(const string& key, shared_ptr<Value> v) {
-    Scope *out = this;
-    usize before = this->map.size();
-    while (out) {
-        auto it = out->map.begin();
-        auto cnt = std::min(before, out->map.size());
-        while (cnt != 0) {
-            if (it->first == key) {
-                // Reclaim unused scope
-                if (it->second->kind == Func &&
-                    it->second.use_count() == 2)
-                {
-                    auto captured = std::static_pointer_cast<FuncValue>(it->second)->outer;
-                    if (captured != this) captured->unlink();
-                }
-                it->second = v;
-                return;
-            }
-            ++it; --cnt;
-        }
-        before = out->visible;
-        out = out->outer;
+    auto it = find_var(this, key);
+    // Reclaim unused scope
+    if (it->second->kind == Func &&
+        it->second.use_count() == 2)
+    {
+        auto captured = std::static_pointer_cast<FuncValue>(it->second)->outer;
+        if (captured != this) captured->unlink();
     }
-    cerr << "ERROR: Cannot assign var: " << key << endl;
-    std::exit(1);
+    it->second = v;
 }
 
 void Scope::unlink() {
