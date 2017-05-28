@@ -16,9 +16,9 @@ static shared_ptr<BoolValue> _bools[2] = {
     std::make_shared<BoolValue>(true),
 };
 
-#define to_int(v)  (static_cast<const IntValue*>(v)->value())
-#define to_bool(v) (static_cast<const BoolValue*>(v)->value())
-#define to_func(v) (static_cast<const FuncValue*>(v)->value())
+#define to_int(v)  (std::static_pointer_cast<const IntValue>(v)->value())
+#define to_bool(v) (std::static_pointer_cast<const BoolValue>(v)->value())
+#define to_func(v) (std::static_pointer_cast<const FuncValue>(v)->value())
 
 #define make_int(v)  (std::make_shared<IntValue>(v))
 #define make_bool(v)  ((v) ? _bools[1] : _bools[0])
@@ -34,32 +34,32 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
             case Lt:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_bool(to_int(l.get()) < to_int(r.get()));
+                return make_bool(to_int(l) < to_int(r));
             case Gt:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_bool(to_int(l.get()) > to_int(r.get()));
+                return make_bool(to_int(l) > to_int(r));
             case Eq:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_bool(to_int(l.get()) == to_int(r.get()));
+                return make_bool(to_int(l) == to_int(r));
             case And:
                 l = eval_expr(first, current);
-                if (!to_bool(l.get())) {
+                if (!to_bool(l)) {
                     return make_bool(false);
                 }
                 r = eval_expr(last, current);
-                return make_bool(to_bool(r.get()));
+                return make_bool(to_bool(r));
             case Or:
                 l = eval_expr(first, current);
-                if (to_bool(l.get())) {
+                if (to_bool(l)) {
                     return make_bool(true);
                 }
                 r = eval_expr(last, current);
-                return make_bool(to_bool(r.get()));
+                return make_bool(to_bool(r));
             case Negb:
                 l = eval_expr(first, current);
-                return make_bool(!to_bool(l.get()));
+                return make_bool(!to_bool(l));
         }
     }
     else if (t->kind == Expr) {
@@ -84,31 +84,31 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
             case Plus:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_int(to_int(l.get()) + to_int(r.get()));
+                return make_int(to_int(l) + to_int(r));
             case Minus:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_int(to_int(l.get()) - to_int(r.get()));
+                return make_int(to_int(l) - to_int(r));
             case Mult:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                return make_int(to_int(l.get()) * to_int(r.get()));
+                return make_int(to_int(l) * to_int(r));
             case Div:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                if (to_int(r.get()) == 0) {
+                if (to_int(r) == 0) {
                     cerr << "ERROR: integer division or modulo by zero" << endl;
                     std::exit(1);
                 }
-                return make_int(to_int(l.get()) / to_int(r.get()));
+                return make_int(to_int(l) / to_int(r));
             case Mod:
                 l = eval_expr(first, current);
                 r = eval_expr(last, current);
-                if (to_int(r.get()) == 0) {
+                if (to_int(r) == 0) {
                     cerr << "ERROR: integer division or modulo by zero" << endl;
                     std::exit(1);
                 }
-                return make_int(to_int(l.get()) % to_int(r.get()));
+                return make_int(to_int(l) % to_int(r));
             case Apply: {
                 var = current->get_var(first->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
@@ -167,7 +167,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
             }
             else if (cmd->subtype == While) {
                 auto expr = eval_expr(cmd->sons.front(), root);
-                while (to_bool(expr.get())) {
+                while (to_bool(expr)) {
                     Scope *born = new Scope(root, root->count_vars());
                     #if DEBUG_MODE
                     cout << "While block scope: " << born->id <<endl;
@@ -189,7 +189,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                 cout << "If block scope: " << born->id <<endl;
                 #endif
                 shared_ptr<Value> res;
-                if (to_bool(expr.get())) {
+                if (to_bool(expr)) {
                     res = execute_program(*++it, born);
                 } else {
                     std::advance(it, 2);
