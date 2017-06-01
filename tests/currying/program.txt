@@ -20,5 +20,4 @@ Begin
     Assign x Apply f Argus g End
     Read y
     Print Apply x Argus y End
-    Assign x 0
 End

@@ -29,6 +29,4 @@ Begin
     Assign a Apply fg Argus End
     Assign a Apply a Argus End
     Call a Argus End
-
-    Assign a 0
 End

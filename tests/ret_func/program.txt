@@ -12,10 +12,40 @@ Begin
         Return inner
     End
 
-    Assign x Apply f Argus End
+    Function g Paras x
+    Begin
+        If Eq x 2 Begin
+            Function inner Paras a
+            Begin
+                Return Plus 3 a
+            End
+
+            Return inner
+        End
+        Else Begin
+            Var x End
+            While Eq 2 2 Begin
+                Function inner Paras a
+                Begin
+                    Return Mult x a
+                End
+                Assign x 10
+                Var x End
+                Assign x inner
+                While Eq 2 2 Begin
+                    While Eq 2 2 Begin
+                        Return inner
+                    End
+                End
+            End
+        End
+    End
+
+    Assign y Apply f Argus End
+    Print Apply y Argus 3 End
+    Assign x Apply g Argus 2 End
     Print Apply x Argus 6 End
+    Assign x Apply g Argus 3 End
     Assign y x
     Print Apply y Argus 6 End
-    Assign x 0
-    Assign y 0
 End
