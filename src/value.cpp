@@ -13,7 +13,9 @@ using std::shared_ptr;
 #if DEBUG_MODE
 static u32 sid = 0;
 #endif
-Scope::Scope(Scope *s, usize seen) : ref(1), outer(s), visible(seen) {
+Scope::Scope(Scope *s, usize seen) :
+    ref(1), top(false), outer(s), visible(seen)
+{
     #if DEBUG_MODE
     id = sid++;
     #endif
@@ -23,10 +25,6 @@ Scope::Scope(Scope *s, usize seen) : ref(1), outer(s), visible(seen) {
         #endif
         s->link();
     }
-}
-
-void Scope::link() {
-    ref++;
 }
 
 void Scope::decl_var(const string& name) {
@@ -62,14 +60,32 @@ shared_ptr<Value> Scope::get_val(const string &key) {
 
 void Scope::set_var(const string& key, shared_ptr<Value> v) {
     auto it = find_var(this, key);
-    // Reclaim unused scope
-    if (it->second->kind == Func &&
-        it->second.use_count() == 2)
-    {
-        auto captured = std::static_pointer_cast<FuncValue>(it->second)->outer;
-        if (captured != this) captured->unlink();
+    if (it->second->kind == Func) {
+        auto fv = std::static_pointer_cast<FuncValue>(it->second);
+        if (--fv->ref == 0) {
+            auto captured = fv->outer;
+            // Reclaim unused scope
+            if (captured != this) captured->free2top();
+        }
     }
     it->second = v;
+    if (v->kind == Func) {
+        auto fv = std::static_pointer_cast<FuncValue>(v);
+        ++fv->ref;
+    }
+}
+
+void Scope::free2top() {
+    // Ignore Program Block
+    if (!outer) return;
+
+    --outer->ref;
+    if (top) {
+        return destroy();
+    }
+    auto prev = outer;
+    destroy();
+    prev->free2top();
 }
 
 void Scope::unlink() {

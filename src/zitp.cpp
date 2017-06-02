@@ -105,6 +105,7 @@ shared_ptr<Value> Zitp::eval_expr(Term *t, Scope *current) {
                 var = current->get_val(first->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
                 Scope *s = new Scope(fv->outer, fv->visible);
+                s->mark_top();
                 #if DEBUG_MODE
                 cout << "Apply <" << first->name << "> scope: " << s->id <<endl;
                 #endif
@@ -139,6 +140,31 @@ void Zitp::init_params(const FuncValue *fv, Term *argus, Scope *born, Scope *cur
     }
 }
 
+static void free_scope(const Value* ret, Scope *root) {
+    if (ret && ret->kind == Func) {
+        auto fv = static_cast<const FuncValue*>(ret);
+        if (fv->outer != root) {
+            root->unlink();
+        }
+        return;
+    }
+
+    for (auto& e : root->map) {
+        if (e.second->kind == Func) {
+            auto fv = std::static_pointer_cast<FuncValue>(e.second);
+            if (--fv->ref == 0) {
+                auto captured = fv->outer;
+                if (captured != root) {
+                    captured->free2top();
+                    continue;
+                }
+            }
+            e.second.reset();
+        }
+    }
+    return root->unlink();
+}
+
 shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
     if (t->kind != Block) {
         cerr << "ERROR: Not a Block" << endl;
@@ -149,7 +175,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
         if (cmd->kind == Function) {
             root->decl_var(cmd->sons.front()->name);
             root->set_var(cmd->sons.front()->name,
-                    std::make_shared<FuncValue>(root, cmd));
+                          std::make_shared<FuncValue>(root, cmd));
         }
         else if (cmd->kind == Command) {
             if (cmd->subtype == Declaration) {
@@ -165,8 +191,9 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                     cout << "While block scope: " << born->id <<endl;
                     #endif
                     auto res = execute_program(cmd->sons.back(), born);
+                    // Early Return
                     if (res) {
-                        root->unlink();
+                        free_scope(res.get(), root);
                         return res;
                     }
 
@@ -187,18 +214,23 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                     std::advance(it, 2);
                     res = execute_program(*it, born);
                 }
+                // Early Return
                 if (res) {
-                    root->unlink();
+                    free_scope(res.get(), root);
                     return res;
                 }
             }
             else if (cmd->subtype == Return) {
-                shared_ptr<Value> expr = eval_expr(cmd->sons.front(), root);
+                auto expr = eval_expr(cmd->sons.front(), root);
                 switch (expr->kind) {
-                    case Integer:
-                        root->unlink();
+                    case Func: {
+                        auto fv = std::static_pointer_cast<FuncValue>(expr);
+                        fv->ref = 0;
+                    }
                     // fallthrough
-                    case Func:
+                    case Boolean:
+                    case Integer:
+                        free_scope(expr.get(), root);
                         return expr;
                     // unreachable
                     default:
@@ -216,6 +248,7 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
                 auto var = root->get_val(cmd->sons.front()->name);
                 const FuncValue *fv = static_cast<const FuncValue*>(var.get());
                 Scope *s = new Scope(fv->outer, fv->visible);
+                s->mark_top();
                 #if DEBUG_MODE
                 cout << "Call <" << cmd->sons.front()->name << "> scope: " << s->id <<endl;
                 #endif
@@ -229,18 +262,17 @@ shared_ptr<Value> Zitp::execute_program(Term *t, Scope *root) {
             else if (cmd->subtype == Print) {
                 auto res = eval_expr(cmd->sons.front(), root);
                 if (res->kind == Integer) {
-                    print_int(to_int(res.get()));
+                    print_int(to_int(res));
                 }
             }
         }
     }
-    root->unlink();
+    free_scope(nullptr, root);
     if (t->father && t->father->kind == Function) {
         return make_int(0);
     }
     return nullptr;
 }
-
 
 i32 Zitp::read_int() {
     if (!_input.is_open()) {
@@ -279,6 +311,7 @@ void Zitp::run() {
         std::exit(1);
     }
     Scope *top = new Scope(nullptr, 0);
+    top->mark_top();
     #if DEBUG_MODE
     cout << "Global scope: " << top->id << endl;
     #endif

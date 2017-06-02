@@ -57,7 +57,7 @@ typedef std::pair<std::string, std::shared_ptr<Value>> var_t;
 class Scope {
     private:
         u32 ref;
-
+        bool top;
         std::vector<var_t>::iterator find_var(Scope *root, const std::string& key) const;
         void destroy() {
             #if DEBUG_MODE
@@ -75,12 +75,14 @@ class Scope {
         std::vector<var_t> map;
         Scope(Scope *s, usize seen);
 
+        void mark_top() { top = true; }
+        void link() { ++ref; }
+        usize count_vars() const { return map.size(); }
         void unlink();
-        void link();
+        void free2top();
         void decl_var(const std::string& name);
         void set_var(const std::string& key, std::shared_ptr<Value> v);
         std::shared_ptr<Value> get_val(const std::string &key);
-        usize count_vars() const { return map.size(); }
 };
 
 class FuncValue : public Value {
@@ -88,7 +90,10 @@ class FuncValue : public Value {
     public:
     Scope* outer;
     usize visible;
-    FuncValue(Scope *s, Term* v = nullptr): val(v), outer(s), visible(s->count_vars()) {
+    usize ref;
+    FuncValue(Scope *s, Term* v = nullptr) :
+        val(v), outer(s), visible(s->count_vars()), ref(1)
+    {
         kind = Func;
     }
     Term* value() const { return val; }
